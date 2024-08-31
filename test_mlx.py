@@ -4,6 +4,7 @@
 
 from dataclasses import dataclass
 import time
+from pathlib import Path
 from typing import List, Optional, Tuple
 import sentencepiece
 
@@ -13,10 +14,10 @@ import mlx.nn as nn
 import msh_mlx
 
 STEPS = 1000
-MODEL_FILE = "/Users/kyutai/tmp/mimi_0abbed5f@100.safetensors"
-TOKENIZER_FILE = "/Users/kyutai/tmp/tokenizer_spm_32k_3.model"
+MODEL_FILE = Path.home() / "tmp" / "mimi_rs_0abbed5f@100.safetensors"
+TOKENIZER_FILE = Path.home() / "tmp" / "tokenizer_spm_32k_3.model"
 
-text_tokenizer = sentencepiece.SentencePieceProcessor(TOKENIZER_FILE)
+text_tokenizer = sentencepiece.SentencePieceProcessor(str(TOKENIZER_FILE))
 mx.random.seed(299792458)
 
 lm_config = msh_mlx.models.config_v0_1()
@@ -28,7 +29,7 @@ model.set_dtype(mx.bfloat16)
 print("model created")
 # nn.quantize(model, bits=8)
 print("model quantized, loading weights...")
-model.load_weights(MODEL_FILE, strict=False)
+model.load_weights(str(MODEL_FILE), strict=True)
 print("weights loaded")
 
 cache = None
