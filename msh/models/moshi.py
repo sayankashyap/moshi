@@ -129,6 +129,7 @@ def get_encodec(filename: tp.Union[str, Path], device):
         )
         model.load_state_dict(pkg["model"])
     model.set_num_codebooks(8)
+    print("EC", sum(p.numel() for p in model.parameters()) / 1e9)
     return model
 
 
@@ -137,9 +138,11 @@ def get_lm(filename: tp.Union[str, Path], device):
     model = msh.models.LMModel(
         device=device,
         dtype=dtype,
+        quantize='int8',
         **lm_kwargs,
     ).to(device=device, dtype=dtype)
     model.eval()
+    filename = '/home/alex/tmp/model.q8.safetensors'
     if _is_safetensors(filename):
         load_model(model, filename)
     else:
@@ -148,4 +151,9 @@ def get_lm(filename: tp.Union[str, Path], device):
             "cpu",
         )
         model.load_state_dict(pkg["fsdp_best_state"]["model"])
+    from ..utils.quant import quantize_module_int8_
+    # for layer in model.transformer.layers:
+    #     quantize_module_int8_(layer)
+    from safetensors.torch import save_file
+    # save_file(model.state_dict(), 'model.q8')
     return model

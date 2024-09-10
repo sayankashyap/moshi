@@ -83,12 +83,15 @@ class ServerState:
         self.text_tokenizer = sentencepiece.SentencePieceProcessor(args.tokenizer)
         log("info", "loading moshi")
         lm = msh.models.moshi.get_lm(args.moshi_weights, DEVICE)
+        input("gen")
         self.lm_gen = msh.models.LMGen(lm)
 
         self.frame_size = int(self.ec.sample_rate / self.ec.frame_rate)
         self.lock = asyncio.Lock()
 
+        input("ecs")
         self.ec.streaming_forever(1)
+        input("lms")
         self.lm_gen.streaming_forever(1)
         log("info", "lm loaded")
 
@@ -189,6 +192,12 @@ async def main():
     state = ServerState()
     log("info", "warming up the model")
     state.warmup()
+    import gc
+    gc.collect()
+    torch.cuda.empty_cache()
+    from gradio import networking
+    tunnel = networking.setup_tunnel('127.0.0.1', args.port, 'testlapin', None)
+    print("Tunnel", tunnel)
     log("info", f"listening to ws://{args.host}:{args.port}")
     async with serve(state.handle_conn, args.host, args.port):
         await asyncio.Future()  # run forever

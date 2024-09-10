@@ -145,6 +145,7 @@ class LMModel(StreamingContainer):
         self.out_norm = create_norm_fn(norm, dim)
         self.depformer_multi_linear = depformer_multi_linear
         kwargs_dep = main_kwargs.copy()
+        kwargs_dep.pop('quantize', None)
         kwargs_dep.update(
             {
                 k.removeprefix(depformer_prefix): v

@@ -20,6 +20,7 @@ from torch.nn import functional as F
 from .gating import make_gating
 from .rope import RotaryEmbedding
 from .streaming import StreamingModule, StreamingContainer
+from ..utils.quant import get_size_dtype_device, quantize_module_int8_
 
 
 class LayerNormF32(nn.LayerNorm):
@@ -343,9 +344,7 @@ class StreamingMultiheadAttention(StreamingModule[_MHAState]):
                 raise RuntimeError("Cannot create a streaming KVCache without a context to estimate capacity.")
         else:
             capacity = self.context
-        device = self.in_proj_weight.device
-        # TODO: the following estimation will not work great with FSDP.
-        dtype = self.in_proj_weight.dtype
+        _, dtype, device = get_size_dtype_device(self, 'in_proj_weight')
         dim_per_head = self.embed_dim // self.num_heads
         kv_cache = RingKVCache(batch_size, self.num_heads, dim_per_head, capacity, device, dtype)
         return _MHAState(kv_cache, offset=torch.zeros(1, device=device, dtype=torch.long), offset_cpu=0)
@@ -614,6 +613,7 @@ class StreamingTransformer(StreamingModule[_TransformerState]):
         positional_scale: float = 1.0,
         betas: tp.Optional[tp.Tuple[float, float]] = None,
         layer_class: tp.Type[StreamingTransformerLayer] = StreamingTransformerLayer,
+        quantize: str = 'none',
         device=None,
         dtype=None,
         **kwargs,
@@ -646,6 +646,12 @@ class StreamingTransformer(StreamingModule[_TransformerState]):
                     **kwargs,
                 )
             )
+            if quantize == 'none':
+                pass
+            elif quantize == 'int8':
+                quantize_module_int8_(self.layers[-1])
+            else:
+                raise ValueError(f"Expected `quantize` to be one of 'none', 'int8', but got {quantize}.")
 
     def _init_streaming_state(self, batch_size: int) -> _TransformerState:
         device = next(self.parameters()).device
