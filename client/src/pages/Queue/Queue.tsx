@@ -7,8 +7,6 @@ import { Conversation } from "../Conversation/Conversation";
 import { Button } from "../../components/Button/Button";
 import { useModelParams } from "../Conversation/hooks/useModelParams";
 import { ModelParams } from "../Conversation/components/ModelParams/ModelParams";
-import { useUserEmail } from "./hooks/useUserEmail";
-import { Input } from "../../components/Input/Input";
 import { env } from "../../env";
 
 type Status = "connecting" | "in_queue" | "has_credentials" | "error" | "no_queue" | "idle"| "bypass";
@@ -20,10 +18,9 @@ export const Queue:FC = () => {
   if (!queueId) {
     queueId = 'talktomoshi';
   }
-  const overrideWorkerAddr = searchParams.get("worker_addr");
+  const workerAddr = searchParams.get("worker_addr");
   const [sessionId, setSessionId] = useState<number|null>(null);
   const [sessionAuthId, setSessionAuthId] = useState<string|null>(null);
-  const [workerAddr, setWorkerAddr] = useState<string|null>(null);
   const [workerAuthId, setWorkerAuthId] = useState<string|null>(null);
   const [currentPosition, setCurrentPosition] = useState<string|null>(null);
   const [error, setError] = useState<string|null>(null);
@@ -32,8 +29,6 @@ export const Queue:FC = () => {
   const [showMicrophoneAccessMessage, setShowMicrophoneAccessMessage] = useState<boolean>(false);
   const modelParams = useModelParams();
   const modalRef = useRef<HTMLDialogElement>(null);
-
-  const {userEmail, setUserEmail, error: emailError, validate} = useUserEmail(!!overrideWorkerAddr);
 
   const currentUrl = new URL(window.location.href);
   const hostname = currentUrl.hostname;
@@ -105,36 +100,15 @@ export const Queue:FC = () => {
   }, [audioContext, worklet]);
 
   const onConnect = useCallback(async() => {
-      if(!validate(userEmail)) {
-        return;
-      }
       await startProcessor();
       const hasAccess = await getMicrophoneAccess();
       if(hasAccess) {
         setShouldConnect(true);
       }
-  }, [setShouldConnect, startProcessor, userEmail, getMicrophoneAccess, validate]);
+  }, [setShouldConnect, startProcessor, getMicrophoneAccess]);
 
   const status:Status = useMemo(() => {
-    if(overrideWorkerAddr) {
-      return "bypass";
-    }
-    if(!queueId) {
-      return "no_queue";
-    }
-    if(error) {
-      return "error";
-    }
-    if(!shouldConnect) {
-      return "idle";
-    }
-    if(workerAddr && workerAuthId) {
-      return "has_credentials";
-    }
-    if(!sessionId || !sessionAuthId) {
-      return "connecting";
-    }
-    return "in_queue";
+    return "bypass";
   }, [queueId, sessionId, sessionAuthId, workerAddr, workerAuthId, currentPosition, hasMicrophoneAccess, error, shouldConnect]);
 
   const client = useMemo(() => {
@@ -160,84 +134,16 @@ export const Queue:FC = () => {
       });
   }, [queueId, client, status, shouldConnect]);
 
-  useEffect(() => {
-    if (!sessionId || !sessionAuthId) {
-      return;
-    }
-    if(status === "has_credentials") {
-      return;
-    }
-    let isQuerying = false;
-    let intervalId:number|null = null;
-
-    const checkUser =  () => {
-      if (isQuerying) {
-        return;
-      }
-      isQuerying = true;
-      client.checkUser(sessionId, sessionAuthId)
-        .then(({ worker_addr, worker_auth_id, current_position }) => {
-          setCurrentPosition(current_position);
-          if (worker_addr && worker_auth_id) {
-            setWorkerAddr(worker_addr);
-            setWorkerAuthId(worker_auth_id);
-            if(intervalId !== null) {
-              clearInterval(intervalId);
-            }
-          }
-        })
-        .catch((e) => {
-          if(intervalId !== null) {
-            clearInterval(intervalId);
-          }
-          setError(e.message);
-          console.error(e);
-        }).finally(()=> {
-          isQuerying = false;
-        });
-    }
-    intervalId = setInterval(checkUser, 400);
-    return () => {
-      if(intervalId !== null) {
-        clearInterval(intervalId);
-      }
-    };
-  }, [sessionId, sessionAuthId, client, setCurrentPosition, setWorkerAddr, setWorkerAuthId, status, setError]);
-
-
   if(status === "bypass" && hasMicrophoneAccess && audioContext.current && worklet.current) {
     return (
       <Conversation
-        workerAddr={overrideWorkerAddr ?? ""}
+        workerAddr={workerAddr ?? ""}
         audioContext={audioContext as MutableRefObject<AudioContext>}
         worklet={worklet as MutableRefObject<AudioWorkletNode>}
         {...modelParams}
       />
     );
   }
-
-  if(status === "has_credentials" && workerAddr && audioContext.current && workerAuthId && sessionId && sessionAuthId && worklet?.current) {
-    return (
-      <Conversation
-        email={userEmail}
-        workerAddr={overrideWorkerAddr ?? workerAddr}
-        workerAuthId={workerAuthId}
-        audioContext={audioContext as MutableRefObject<AudioContext>}
-        worklet={worklet as MutableRefObject<AudioWorkletNode>}
-        sessionId={sessionId}
-        sessionAuthId={sessionAuthId}
-        onConversationEnd={() => {
-          setWorkerAddr(null);
-          setWorkerAuthId(null);
-          setSessionId(null);
-          setSessionAuthId(null);
-          setShouldConnect(false);
-        }}
-        {...modelParams}
-      />
-    );
-  }
-
 
   return (
     <div className="text-white text-center h-screen w-screen p-4 flex flex-col items-center ">
@@ -274,19 +180,7 @@ export const Queue:FC = () => {
           {showMicrophoneAccessMessage &&
             <p className="text-center">Please enable your microphone before proceeding</p>
           }
-          <Input
-            type="email"
-            placeholder="Enter your email"
-            value={userEmail}
-            onChange={(e) => setUserEmail(e.target.value)}
-            error={emailError ?? ""}
-            onKeyDown={(e) => {
-              if(e.key === "Enter") {
-                onConnect();
-              }
-            }}
-          />
-          <Button onClick={async () => await onConnect()}>Join queue</Button>
+          <Button onClick={async () => await onConnect()}>Connect</Button>
           <Button className="absolute top-4 right-4" onClick={()=> modalRef.current?.showModal()}>Settings</Button>
             <dialog ref={modalRef} className="modal">
               <div className="modal-box border-2 border-white rounded-none flex justify-center bg-black">
