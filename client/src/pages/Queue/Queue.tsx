@@ -107,34 +107,11 @@ export const Queue:FC = () => {
       }
   }, [setShouldConnect, startProcessor, getMicrophoneAccess]);
 
-  const status:Status = useMemo(() => {
-    return "bypass";
-  }, [queueId, sessionId, sessionAuthId, workerAddr, workerAuthId, currentPosition, hasMicrophoneAccess, error, shouldConnect]);
-
   const client = useMemo(() => {
     return getAPIClient(env.VITE_QUEUE_API_PATH)
   }, [env.VITE_QUEUE_API_PATH]);
 
-  useEffect(() => {
-    if(!shouldConnect) {
-      return;
-    }
-    if (status !== "connecting" || !queueId){
-      return;
-    }
-    client.addUser(queueId)
-      .then(({ session_id, session_auth_id }) => {
-        setSessionId(session_id);
-        setSessionAuthId(session_auth_id);
-        console.log("Added user to queue", session_id, session_auth_id);
-      })
-      .catch((e) => {
-        setError(e.message);
-        console.error(e);
-      });
-  }, [queueId, client, status, shouldConnect]);
-
-  if(status === "bypass" && hasMicrophoneAccess && audioContext.current && worklet.current) {
+  if(hasMicrophoneAccess && audioContext.current && worklet.current) {
     return (
       <Conversation
         workerAddr={workerAddr ?? ""}
@@ -173,9 +150,8 @@ export const Queue:FC = () => {
         </div>
       </div>
       <div className="flex flex-grow justify-center items-center flex-col">
-      {status == 'error' && <p className="text-center text-red-800 text-2xl">{error}</p>}
-      {status == 'no_queue' && <p className="text-center">No queue id provided</p>}
-      {(status === 'idle' || status=== 'bypass')  && (
+      {!workerAddr && <p className="text-center text-red-800 text-2xl">No worker_addr provided in the url, add one!</p>}
+      {(
         <>
           {showMicrophoneAccessMessage &&
             <p className="text-center">Please enable your microphone before proceeding</p>
@@ -192,13 +168,6 @@ export const Queue:FC = () => {
             </dialog>
         </>
       )}
-      {status === "connecting" && <p className="text-center">Connecting to queue...</p>}
-      {status === "in_queue" && (
-        <p className="text-center">
-          You're in the queue !<br />
-          {currentPosition && <span>Current position: <span className="text-green">{currentPosition}</span></span>}
-        </p>)
-      }
       </div>
       <div className="text-center flex justify-end items-center flex-col">
         <a target="_blank" href="https://kyutai.org/moshi-terms.pdf" className="text-center">Terms of Use</a>
