@@ -7,9 +7,6 @@ use clap::Parser;
 use std::str::FromStr;
 
 mod audio;
-mod benchmark;
-mod standalone;
-mod stream_both;
 mod utils;
 
 #[derive(Parser, Debug)]
@@ -111,40 +108,10 @@ async fn main() -> Result<()> {
     let args = Args::parse();
     match args.command {
         Command::Standalone(standalone_args) => {
-            let mut config = standalone::Config::load(&args.config)?;
-            let _guard = tracing_init(
-                &config.stream.log_dir,
-                &config.stream.instance_name,
-                &args.log_level,
-                args.silent,
-            )?;
-            tracing::info!("starting process with pid {}", std::process::id());
-
-            if config.stream.requires_model_download() {
-                standalone::download_from_hub(&mut config.stream).await?;
-            }
-            standalone::run(&standalone_args, &config).await?;
+            todo!()
         }
         Command::Benchmark(standalone_args) => {
-            let config = stream_both::Config::load(&args.config)?;
-            let _guard = if standalone_args.chrome_tracing {
-                use tracing_chrome::ChromeLayerBuilder;
-                use tracing_subscriber::prelude::*;
-                let (chrome_layer, guard) = ChromeLayerBuilder::new().build();
-                tracing_subscriber::registry().with(chrome_layer).init();
-                let b: Box<dyn std::any::Any> = Box::new(guard);
-                b
-            } else {
-                let guard = tracing_init(
-                    &config.log_dir,
-                    &config.instance_name,
-                    &args.log_level,
-                    args.silent,
-                )?;
-                let b: Box<dyn std::any::Any> = Box::new(guard);
-                b
-            };
-            benchmark::run(&standalone_args, &config).await?;
+            todo!()
         }
     }
     Ok(())
