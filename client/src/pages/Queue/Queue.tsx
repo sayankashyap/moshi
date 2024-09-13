@@ -1,6 +1,5 @@
 import moshiProcessorUrl from "../../audio-processor.ts?worker&url";
-import { FC, useEffect, useMemo, useState, useCallback, useRef, MutableRefObject } from "react";
-import { getAPIClient } from "./api/client";
+import { FC, useEffect, useState, useCallback, useRef, MutableRefObject } from "react";
 import eruda from "eruda";
 import { useSearchParams } from "react-router-dom";
 import { Conversation } from "../Conversation/Conversation";
@@ -8,8 +7,6 @@ import { Button } from "../../components/Button/Button";
 import { useModelParams } from "../Conversation/hooks/useModelParams";
 import { ModelParams } from "../Conversation/components/ModelParams/ModelParams";
 import { env } from "../../env";
-
-type Status = "connecting" | "in_queue" | "has_credentials" | "error" | "no_queue" | "idle"| "bypass";
 
 
 export const Queue:FC = () => {
@@ -19,40 +16,11 @@ export const Queue:FC = () => {
     queueId = 'talktomoshi';
   }
   const workerAddr = searchParams.get("worker_addr");
-  const [sessionId, setSessionId] = useState<number|null>(null);
-  const [sessionAuthId, setSessionAuthId] = useState<string|null>(null);
-  const [workerAuthId, setWorkerAuthId] = useState<string|null>(null);
-  const [currentPosition, setCurrentPosition] = useState<string|null>(null);
-  const [error, setError] = useState<string|null>(null);
   const [shouldConnect, setShouldConnect] = useState<boolean>(false);
   const [hasMicrophoneAccess, setHasMicrophoneAccess] = useState<boolean>(false);
   const [showMicrophoneAccessMessage, setShowMicrophoneAccessMessage] = useState<boolean>(false);
   const modelParams = useModelParams();
   const modalRef = useRef<HTMLDialogElement>(null);
-
-  const currentUrl = new URL(window.location.href);
-  const hostname = currentUrl.hostname;
-  const searchParamsForGeo = currentUrl.search;
-
-  const constructNewGeoUrl = () => {
-    let newHostname = '';
-    let currentGeo = '';
-    if (hostname.endsWith('us.moshi.chat')) {
-      currentGeo = 'US';
-      newHostname = hostname.replace('us.moshi.chat', 'moshi.chat');
-    } else if (hostname.endsWith('eu.moshi.chat')) {
-      currentGeo = 'EU';
-      newHostname = hostname.replace('eu.moshi.chat', 'us.moshi.chat');
-    } else if (hostname.endsWith('moshi.chat')) {
-      currentGeo = 'EU';
-      newHostname = hostname.replace('moshi.chat', 'us.moshi.chat');
-    }
-    const otherGeo = currentGeo === 'EU' ? 'US' : 'EU';
-    const port = currentUrl.port;
-    const newUrl = `${currentUrl.protocol}//${newHostname}:${port}${currentUrl.pathname}${searchParamsForGeo}`;
-    return [newUrl, currentGeo, otherGeo];
-  };
-  const [newGeoUrl, currentGeo, otherGeo] = constructNewGeoUrl();
 
   const audioContext = useRef<AudioContext | null>(null);
   const worklet = useRef<AudioWorkletNode | null>(null);
@@ -107,10 +75,6 @@ export const Queue:FC = () => {
       }
   }, [setShouldConnect, startProcessor, getMicrophoneAccess]);
 
-  const client = useMemo(() => {
-    return getAPIClient(env.VITE_QUEUE_API_PATH)
-  }, [env.VITE_QUEUE_API_PATH]);
-
   if(hasMicrophoneAccess && audioContext.current && worklet.current) {
     return (
       <Conversation
@@ -144,8 +108,6 @@ export const Queue:FC = () => {
             or what <span className='cute-words'>movie</span> it watched last.</p>
           <p>We strive to support all browsers, Chrome works best.</p>
           <p>Baked with &lt;3 @<a href="https://kyutai.org/" className='cute-words underline'>Kyutai</a>.</p>
-          { currentGeo !== '' && <p>You are on the <span className='cute-words'>{currentGeo}</span> demo.
-            Depending on your location, maybe the <a href={newGeoUrl} className="cute-words underline">{otherGeo} demo</a> will offer better latency.</p>}
           </div>
         </div>
       </div>
