@@ -46,7 +46,7 @@ width="800px"></p>
 
 ## Organisation of the repository
 
-There are three separate versions of the moshi inference stack in this repo.
+There are three separate versions of the moshi inference stack in this repository.
 - The Python version using PyTorch is in the [`moshi/`](moshi/) directory.
 - The Python version using MLX for M series Macs is in the [`moshi_mlx/`](moshi_mlx/) directory.
 - The Rust version used in production is in the [`rust/`](rust/) directory.
